@@ -10,6 +10,10 @@
 #include "nRF24L01.h"
 #include "RF24.h"
 
+#define USE_IRQ_PIN
+
+bool IsConnected(void);
+
 TX_TO_RX ttr;
 RF24 radio(RF_CE_PIN, RF_CSN_PIN); // Create a Radio
 
@@ -18,53 +22,85 @@ void setup() {
 
   ttr.Phase = 0xA4;
   ttr.LEDControl = 0xB7;
-  ttr.FrontEncoder = 0xFFEEDDCC;
+  ttr.FrontEncoder = 157291;
+  ttr.Count = 14;
 
+#ifdef USE_IRQ_PIN
   pinMode(RF_IRQ_PIN, INPUT);
+#endif  
 
   if (!radio.begin())
     Serial.println("PTX failed to initialize");
   else {
     // RF24 library begin() function enables PTX mode
     radio.setAddressWidth(5); // set address size to 5 bytes
-    radio.setRetries(15, 15); // set 2 retries with 500us delays in between
+    radio.setRetries(1, 5); // set 5 retries with 500us delays in between
     radio.setChannel(RF_CHANNEL); // set communication channel
-    // radio.setPayloadSize(NUM_TTR_BYTES); // set max transmission payload size to sizeof TTR data struct
+    radio.setPayloadSize(NUM_TTR_BYTES); // set payload size to number of bytes being SENT
+    radio.enableAckPayload(); // enable payload attached to ACK from PRX
     radio.setPALevel(RF24_PA_LOW); // set power amplifier level. Using LOW for tests on bench. Should use HIGH on PL/Truck
     radio.setDataRate(RF24_1MBPS); // set data rate to most reliable speed
-    radio.openWritingPipe(RF_PTX_WRITE_ADDR);
-    radio.openReadingPipe(0, RF_PTX_READ_ADDR_P0);
-    // No need to call startListening() because the PTX transmits first
+    radio.openWritingPipe(RF_PTX_WRITE_ADDR); // open the writing pipe on the address we chose
     Serial.println("PTX initialization successful");
   }
 }
 
 unsigned long curTime = 0;
-static unsigned long preTime = 0;
-unsigned long curSendTime = 0;
-static unsigned long curReceiveTime = 0;
+unsigned long preLogTime = 0;
+unsigned long preSendTime = 0;
+unsigned long lastReceiveTime = 0;
+static RX_TO_TX rtt;
 void loop() {
   curTime = millis();
-  if (curTime - preTime >= 1000) {
+  IsConnected();
+
+  /** check if IRQ pin is active before sending since it is not attached to an
+   * interrupt pin on the Arduino. This means it can be missed in the main
+   * loop if placed directly after the 'write', and the PTX hasn't received
+   * the ACK and payload from the PRX. By checking the pin before sending, we
+   * will capture the IRQ on the next iteration of the loop. */
+  /** @note try to throw this in TIMER ISR so we capture data right when it's
+   * sent back */
+#ifdef USE_IRQ_PIN  
+  if (LOW == digitalRead(RF_IRQ_PIN)) {
+    bool tx_ok=false, tx_fail=false, rx_ready=false;
+    radio.whatHappened(tx_ok, tx_fail, rx_ready);
+    if (tx_ok || rx_ready) {
+#endif      
+      if (radio.isAckPayloadAvailable()) {
+        radio.read(&rtt, NUM_RTT_BYTES);
+        lastReceiveTime = curTime;
+      }
+#ifdef USE_IRQ_PIN      
+    }
+  }
+#endif  
+
+  if (curTime - preSendTime >= 10) {
+    ttr.Phase++;
+    ttr.LEDControl++;
+    ttr.FrontEncoder++;
+    ttr.Count++;
     radio.startWrite(&ttr, NUM_TTR_BYTES, 0); // last param - request ACK (0), NOACK (1)
-    curSendTime = curTime;
-    preTime = curTime;
+    preSendTime = curTime;
   }
 
-  if (LOW == digitalRead(RF_IRQ_PIN)) {
-      bool tx_ok, tx_fail, rx_ready;
-      radio.whatHappened(tx_ok, tx_fail, rx_ready);
-      if (tx_ok || rx_ready) {
-        static RX_TO_TX rtt;
-        static int i = 0;
-        radio.read(&rtt, NUM_RTT_BYTES);
-        curReceiveTime = millis();
-        LogInfo(F("switchStatus %d, solenoid Status %d, tx_ok %d, rx_ready %d, count %d, dt [ms] %ld\n"),
-                rtt.SwitchStatus, rtt.SolenoidStatus, tx_ok, rx_ready, ++i, curSendTime-curReceiveTime);
-      }
-      else if (tx_fail) {
-        static int j = 0;
-        LogInfo(F("tx has reached the number maximum number of retries %d, count %d, time %ld ms\n"), radio.getARC(), ++j, millis());
-      }
-    }
+  if (curTime - preLogTime >= 1000) {
+    LogInfo(F("switchStatus 0x%X, solenoid Status 0x%X, count %d, isConnected %d\n"),
+                rtt.SwitchStatus, rtt.SolenoidStatus, rtt.Count, IsConnected());
+    preLogTime = curTime;
+  }
+}
+
+bool IsConnected(void) {
+  static bool conn = false;
+  if (curTime - lastReceiveTime >= 250 && conn) {
+    LogInfo("connection to PRX is lost!\n");
+    conn = false;
+  }
+  else if (lastReceiveTime > 0 && curTime - lastReceiveTime < 250 && !conn) {
+    LogInfo("established connection to PRX\n");
+    conn = true;
+  }
+  return conn;
 }
