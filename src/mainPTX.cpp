@@ -10,12 +10,12 @@
 #include "nRF24L01.h"
 #include "RF24.h"
 
-#define USE_IRQ_PIN
+// #define USE_IRQ_PIN
 
 bool IsConnected(void);
 
 TX_TO_RX ttr;
-RF24 radio(RF_CE_PIN, RF_CSN_PIN); // Create a Radio
+RF24 radio(RF_CE_PIN, RF_CSN_PIN); // Create a radio object
 
 void setup() {
   Serial.begin(115200);
@@ -81,7 +81,8 @@ void loop() {
     ttr.LEDControl++;
     ttr.FrontEncoder++;
     ttr.Count++;
-    radio.startWrite(&ttr, NUM_TTR_BYTES, 0); // last param - request ACK (0), NOACK (1)
+    // radio.startWrite(&ttr, NUM_TTR_BYTES, 0); // last param - request ACK (0), NOACK (1)
+    radio.write(&ttr, NUM_TTR_BYTES);
     preSendTime = curTime;
   }
 
@@ -96,6 +97,7 @@ bool IsConnected(void) {
   static bool conn = false;
   if (curTime - lastReceiveTime >= 250 && conn) {
     LogInfo("connection to PRX is lost!\n");
+    radio.flush_tx();
     conn = false;
   }
   else if (lastReceiveTime > 0 && curTime - lastReceiveTime < 250 && !conn) {
