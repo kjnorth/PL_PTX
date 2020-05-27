@@ -33,6 +33,11 @@ typedef struct
 #define RF_PTX_WRITE_ADDR       0xA1B2C3D4E5
 #define RF_PTX_READ_ADDR_P0     RF_PTX_WRITE_ADDR
 #define RF_CHANNEL              75 // this is not a pin
+/** uncomment RF_USE_IRQ_PIN if IRQ pin is mapped from RF
+ * module to Arduino. @note that code is set up such that
+ * the module's IRQ pin does not need to be mapped to an
+ * interrupt pin on the Arduino */
+// #define RF_USE_IRQ_PIN
 #define RF_IRQ_PIN              48
 #define RF_CE_PIN				49
 #define	RF_MISO_PIN             50

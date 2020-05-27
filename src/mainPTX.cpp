@@ -10,8 +10,6 @@
 #include "nRF24L01.h"
 #include "RF24.h"
 
-// #define USE_IRQ_PIN
-
 bool IsConnected(void);
 
 TX_TO_RX ttr;
@@ -25,7 +23,7 @@ void setup() {
   ttr.FrontEncoder = 157291;
   ttr.Count = 14;
 
-#ifdef USE_IRQ_PIN
+#ifdef RF_USE_IRQ_PIN
   pinMode(RF_IRQ_PIN, INPUT);
 #endif  
 
@@ -61,7 +59,7 @@ void loop() {
    * will capture the IRQ on the next iteration of the loop. */
   /** @note try to throw this in TIMER ISR so we capture data right when it's
    * sent back */
-#ifdef USE_IRQ_PIN  
+#ifdef RF_USE_IRQ_PIN  
   if (LOW == digitalRead(RF_IRQ_PIN)) {
     bool tx_ok=false, tx_fail=false, rx_ready=false;
     radio.whatHappened(tx_ok, tx_fail, rx_ready);
@@ -71,7 +69,7 @@ void loop() {
         radio.read(&rtt, NUM_RTT_BYTES);
         lastReceiveTime = curTime;
       }
-#ifdef USE_IRQ_PIN      
+#ifdef RF_USE_IRQ_PIN      
     }
   }
 #endif  
@@ -81,8 +79,11 @@ void loop() {
     ttr.LEDControl++;
     ttr.FrontEncoder++;
     ttr.Count++;
-    // radio.startWrite(&ttr, NUM_TTR_BYTES, 0); // last param - request ACK (0), NOACK (1)
-    radio.write(&ttr, NUM_TTR_BYTES);
+#ifdef RF_USE_IRQ_PIN    
+    radio.startFastWrite(&ttr, NUM_TTR_BYTES, 0);
+#else    
+    radio.writeFast(&ttr, NUM_TTR_BYTES, 0);
+#endif    
     preSendTime = curTime;
   }
 
@@ -97,7 +98,6 @@ bool IsConnected(void) {
   static bool conn = false;
   if (curTime - lastReceiveTime >= 250 && conn) {
     LogInfo("connection to PRX is lost!\n");
-    radio.flush_tx();
     conn = false;
   }
   else if (lastReceiveTime > 0 && curTime - lastReceiveTime < 250 && !conn) {
