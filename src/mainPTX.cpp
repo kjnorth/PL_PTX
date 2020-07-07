@@ -21,7 +21,7 @@ void setup() {
   ttr.Phase = 0xA4;
   ttr.LEDControl = 0xB7;
   ttr.FrontEncoder = 157291;
-  ttr.Count = 14;
+  // ttr.Count = 14;
 
 #ifdef RF_USE_IRQ_PIN
   pinMode(RF_IRQ_PIN, INPUT);
@@ -78,7 +78,6 @@ void loop() {
     ttr.Phase++;
     ttr.LEDControl++;
     ttr.FrontEncoder++;
-    ttr.Count++;
 #ifdef RF_USE_IRQ_PIN    
     radio.startFastWrite(&ttr, NUM_TTR_BYTES, 0);
 #else    
@@ -88,8 +87,8 @@ void loop() {
   }
 
   if (curTime - preLogTime >= 1000) {
-    LogInfo(F("switchStatus 0x%X, solenoid Status 0x%X, count %d, isConnected %d\n"),
-                rtt.SwitchStatus, rtt.SolenoidStatus, rtt.Count, IsConnected());
+    LogInfo(F("switchStatus 0x%X, solenoid Status 0x%X, isConnected %d\n"),
+                rtt.SwitchStatus, rtt.SolenoidStatus, IsConnected());
     preLogTime = curTime;
   }
 }
