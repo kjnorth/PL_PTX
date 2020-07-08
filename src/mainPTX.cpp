@@ -87,7 +87,9 @@ void loop() {
   }
 
   if (curTime - preLogTime >= 1000) {
-    LogInfo(F("switchStatus 0x%X, solenoid Status 0x%X, isConnected %d\n"),
+    LogInfo("pitch ", rtt.Pitch, 2);
+    // LogInfo(", roll ", rtt.Roll, 2);
+    LogInfo(F(", switchStatus 0x%X, solenoid Status 0x%X, isConnected %d\n"),
                 rtt.SwitchStatus, rtt.SolenoidStatus, IsConnected());
     preLogTime = curTime;
   }
