@@ -21,7 +21,6 @@ void setup() {
   ttr.Phase = 0xA4;
   ttr.LEDControl = 0xB7;
   ttr.FrontEncoder = 157291;
-  // ttr.Count = 14;
 
 #ifdef RF_USE_IRQ_PIN
   pinMode(RF_IRQ_PIN, INPUT);
@@ -32,14 +31,12 @@ void setup() {
   else {
     // RF24 library begin() function enables PTX mode
     radio.setAddressWidth(5); // set address size to 5 bytes
-    radio.setRetries(15, 5); // set 5 retries with 500us delays in between
+    radio.setRetries(1, 5); // set 5 retries with 500us delays in between
     radio.setChannel(RF_CHANNEL); // set communication channel
-    // radio.setPayloadSize(NUM_TTR_BYTES); // set payload size to number of bytes being SENT
-    radio.enableDynamicPayloads();
     radio.enableAckPayload(); // enable payload attached to ACK from PRX
+    radio.enableDynamicPayloads(); // must be enabled to receive ACK payload correctly
     radio.setPALevel(RF24_PA_LOW); // set power amplifier level. Using LOW for tests on bench. Should use HIGH on PL/Truck
     radio.setDataRate(RF24_1MBPS); // set data rate to most reliable speed
-    // radio.setDataRate(RF24_2MBPS);
     radio.openWritingPipe(RF_PTX_WRITE_ADDR); // open the writing pipe on the address we chose
     Serial.println("PTX initialization successful");
   }
@@ -81,20 +78,16 @@ void loop() {
     ttr.LEDControl++;
     ttr.FrontEncoder++;
 #ifdef RF_USE_IRQ_PIN    
-    radio.startFastWrite(&ttr, NUM_TTR_BYTES, 0);
+    radio.startFastWrite(&ttr, NUM_TTR_BYTES, RF_REQUEST_ACK);
 #else    
-    radio.writeFast(&ttr, NUM_TTR_BYTES, 0);
+    radio.writeFast(&ttr, NUM_TTR_BYTES, RF_REQUEST_ACK);
 #endif    
     preSendTime = curTime;
   }
 
   if (curTime - preLogTime >= 1000) {
-    // LogInfo("pitch ", rtt.Pitch, 2);
-    // LogInfo(", roll ", rtt.Roll, 2);
-    LogInfo("pitch %d", rtt.Pitch);
-#if ROLL    
-    LogInfo(", roll %d", rtt.Roll);
-#endif    
+    LogInfo("pitch ", rtt.Pitch, 2);
+    LogInfo(", roll ", rtt.Roll, 2);
     LogInfo(F(", switchStatus 0x%X, solenoid Status 0x%X, isConnected %d\n"),
                 rtt.SwitchStatus, rtt.SolenoidStatus, IsConnected());
     preLogTime = curTime;

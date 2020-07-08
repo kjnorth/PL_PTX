@@ -16,16 +16,12 @@ typedef struct
 	int32_t 	FrontEncoder;
 } TX_TO_RX;
 
-#define ROLL 1
-
 typedef struct
 {
 	uint8_t		SwitchStatus;
 	uint8_t		SolenoidStatus;
-	int32_t		Pitch;
-#if ROLL	
-	int32_t		Roll;
-#endif
+	float		Pitch;
+	float		Roll;
 } RX_TO_TX;
 
 #define NUM_TTR_BYTES sizeof(TX_TO_RX)
@@ -37,6 +33,7 @@ typedef struct
 #define RF_PTX_WRITE_ADDR       0xA1B2C3D4E5
 #define RF_PTX_READ_ADDR_P0     RF_PTX_WRITE_ADDR
 #define RF_CHANNEL              120
+#define RF_REQUEST_ACK					0
 /** uncomment RF_USE_IRQ_PIN if IRQ pin is mapped from RF
  * module to Arduino. @note that code is set up such that
  * the module's IRQ pin does not need to be mapped to an
