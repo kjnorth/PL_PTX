@@ -32,12 +32,14 @@ void setup() {
   else {
     // RF24 library begin() function enables PTX mode
     radio.setAddressWidth(5); // set address size to 5 bytes
-    radio.setRetries(1, 5); // set 5 retries with 500us delays in between
+    radio.setRetries(15, 5); // set 5 retries with 500us delays in between
     radio.setChannel(RF_CHANNEL); // set communication channel
-    radio.setPayloadSize(NUM_TTR_BYTES); // set payload size to number of bytes being SENT
+    // radio.setPayloadSize(NUM_TTR_BYTES); // set payload size to number of bytes being SENT
+    radio.enableDynamicPayloads();
     radio.enableAckPayload(); // enable payload attached to ACK from PRX
     radio.setPALevel(RF24_PA_LOW); // set power amplifier level. Using LOW for tests on bench. Should use HIGH on PL/Truck
     radio.setDataRate(RF24_1MBPS); // set data rate to most reliable speed
+    // radio.setDataRate(RF24_2MBPS);
     radio.openWritingPipe(RF_PTX_WRITE_ADDR); // open the writing pipe on the address we chose
     Serial.println("PTX initialization successful");
   }
@@ -87,8 +89,12 @@ void loop() {
   }
 
   if (curTime - preLogTime >= 1000) {
-    LogInfo("pitch ", rtt.Pitch, 2);
+    // LogInfo("pitch ", rtt.Pitch, 2);
     // LogInfo(", roll ", rtt.Roll, 2);
+    LogInfo("pitch %d", rtt.Pitch);
+#if ROLL    
+    LogInfo(", roll %d", rtt.Roll);
+#endif    
     LogInfo(F(", switchStatus 0x%X, solenoid Status 0x%X, isConnected %d\n"),
                 rtt.SwitchStatus, rtt.SolenoidStatus, IsConnected());
     preLogTime = curTime;
